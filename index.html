@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Worldbuilder</title>
+<style>
+  :root { --glass: rgba(18, 26, 38, 0.74); --line: rgba(255, 255, 255, 0.14); --ink: #eef3f8; --muted: #a9b6c4; --accent: #f2c46a; --danger: #ff8a5a; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #d6e9f2; font: 13px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); }
+  canvas { display: block; touch-action: none; }
+  .panel { position: fixed; padding: 10px 14px; border-radius: 12px; background: var(--glass); border: 1px solid var(--line); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+  #hud { right: 12px; top: calc(12px + env(safe-area-inset-top, 0px)); width: 260px; pointer-events: none; }
+  #hud .season { display: flex; justify-content: space-between; align-items: baseline; font-weight: 700; font-size: 15px; letter-spacing: 0.02em; }
+  #hud .year { font-weight: 500; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  #hud .bar { height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.12); overflow: hidden; margin: 4px 0 6px; }
+  #hud .bar i { display: block; height: 100%; background: var(--accent); border-radius: 2px; }
+  #hud .tribe { border-top: 1px solid var(--line); padding-top: 8px; margin-top: 8px; }
+  #hud .thead { display: flex; justify-content: space-between; align-items: baseline; }
+  #hud .era { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); }
+  #hud .small { font-size: 12px; color: var(--muted); }
+  #hud .need { font-size: 12px; color: #ffd9a0; }
+  #log { position: fixed; left: 12px; top: calc(12px + env(safe-area-inset-top, 0px)); display: flex; flex-direction: column; gap: 6px; max-width: min(360px, 60vw); pointer-events: none; }
+  #log .entry { padding: 6px 12px; border-radius: 10px; background: var(--glass); border: 1px solid var(--line); transition: opacity 1.5s; }
+  #log .entry.old { opacity: 0.35; }
+  #toolbar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(12px + env(safe-area-inset-bottom, 0px)); display: flex; gap: 14px; padding: 8px 12px; max-width: calc(100vw - 32px); overflow-x: auto; box-sizing: border-box; }
+  #toolbar .group { display: flex; flex-direction: column; gap: 4px; }
+  #toolbar .glabel { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
+  #toolbar .btns { display: flex; gap: 4px; }
+  #toolbar button { font: 600 12px system-ui, sans-serif; color: var(--ink); background: rgba(255, 255, 255, 0.07); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; cursor: pointer; white-space: nowrap; }
+  #toolbar button:hover { background: rgba(255, 255, 255, 0.16); }
+  #toolbar button[aria-pressed="true"] { background: var(--accent); color: #1c1a14; border-color: var(--accent); }
+  #toolbar button.danger[aria-pressed="true"] { background: var(--danger); border-color: var(--danger); }
+  #toolbar button:focus-visible { outline: 2px solid #7fb2ff; outline-offset: 2px; }
+  @media (max-width: 720px) {
+    #hud { width: auto; left: 12px; top: auto; bottom: calc(96px + env(safe-area-inset-bottom, 0px)); font-size: 11px; }
+    #hud .tribe .small:nth-of-type(n+4) { display: none; }
+    #log { max-width: calc(100vw - 32px); }
+  }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="log"></div>
+<div id="hud" class="panel"></div>
+<div id="toolbar" class="panel"></div>
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>

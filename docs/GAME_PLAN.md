@@ -206,86 +206,48 @@ Principles (all cheap to follow from the start):
 
 ## 4. Visual style
 
-A **detailed, stylised miniature world**, like a hand-made diorama. It is
-richer than simple low-poly, but everything is still **generated in code**, so
-no 3D models or art purchases are needed.
+A **detailed, stylised miniature world**, generated entirely in code:
 
-What the prototype already does:
-- **Terrain:** a smooth, high-resolution mesh (4×4 render vertices per
-  simulation tile), with added noise detail. A shader paints it procedurally:
-  varied grass, dry patches, exposed earth on slopes, rock and scree above a
-  ragged tree line, snow on the peaks, beaches, and wet sand at the waterline.
-- **Farm fields:** tiles next to cottages and manors become fields, with
-  furrows and wheat or crop colours.
-- **Water:** a custom shader with colour based on depth (turquoise shallows,
-  deep blue sea), animated waves, sun glints, reflections of the sky, and
-  shoreline foam that ripples.
-- **Sky and light:** a gradient sky with a sun glow, drifting clouds whose
-  shadows move across the land, soft sun shadows, and distance fog.
-- **Vegetation:** thousands of instanced oaks, pines, bushes, rocks, flowers
-  and grass tufts, with grass and trees swaying in the wind.
-- **Buildings:** three tiers, each assembled from dozens of parts:
-  - *Hut:* a round mud-and-thatch hut with a woodpile and a banner.
-  - *Cottage:* timber framing, windows with shutters, a door, a tiled roof, a
-    chimney, and a barrel and bench.
-  - *Manor:* a stone ground floor, a timber-framed upper floor, a round tower
-    with a flag, and a hedge.
-
-  Roof and flag colours show which tribe owns them, and chimneys smoke.
-- **Villagers:** little people with legs, arms, belts, hats or hair, and
-  tools. They walk with a proper stride, hammer while building, and sink when
-  they drown.
-- **Feedback:** land rises and falls smoothly with dust clouds, buildings pop
-  up with a bounce, and a ring marks the corner you're about to raise or
-  lower.
-- **Post-processing:** ambient occlusion for contact shadows, a subtle bloom,
-  and filmic tone mapping.
-
-Next visual steps:
-- A day/night cycle, with windows lighting up at night.
-- Territory borders glowing on the ground in each tribe's colour.
-- Miracle effects: earthquake cracks, lava, swamp mist, and camera shake.
-- More building variety (temples, walls, a castle tier) and seasonal world
-  themes.
+- **Terrain:** a shader paints the land by height, slope and season: grass,
+  earth, rock, snow, beaches, crop fields, pastures, cobbled streets, lava and
+  basalt, and earthquake cracks.
+- **Architecture:** every building is assembled from dozens to hundreds of
+  primitives: timber framing, shuttered windows with flower boxes, dormers,
+  chimneys with smoke, stepped brick gables, shop awnings, a columned temple
+  with a painted pediment, a clock-tower town hall with a fountain and market,
+  and a domed cathedral with bell towers. New buildings rise behind
+  scaffolding.
+- **Seasons:** every material responds. Trees blossom, turn gold and red,
+  then go bare. Fields sprout, ripen and are harvested. Snow settles on land
+  and roofs, ice forms at the shore, and the light changes colour.
+- **Weather and disasters:** snowfall, rainstorms with whitecaps, erupting
+  volcanoes with lava bombs and ash, tornadoes with debris, and camera shake.
+- **Post-processing:** ambient occlusion, bloom and filmic tone mapping (the
+  Fast graphics setting turns off the most expensive parts).
 
 ## 5. Roadmap
 
-Each milestone ends with something you can play.
+**Done**
+- M0 Prototype: slope-rule terrain, sculpting, water, villagers.
+- M1 Proper project: Vite, modules, tests, single-file build.
+- M2 Settlements that grow: hut → cottage → manor, townhouses and keeps.
+- Ages of civilisation (Agrarian → City) with landmarks: shrine, windmill,
+  temple, town centre, cathedral.
+- Farms with crop fields and fenced livestock while agrarian; streets in towns.
+- Seasons, weather and natural disasters (earthquake, volcano, tornado, flood).
+- A rival tribe whose AI god shapes land for it.
 
-**M0: Prototype** ✅ *done:* see `prototype/index.html`
-- Heightmap with the slope rule, a detailed textured terrain, a water shader,
-  sky, clouds, and click-to-sculpt with animation.
-- Two tribes of villagers that wander, build on flat land, and drown in water.
-- Settlements that upgrade from hut to cottage to manor as the flat land around
-  them grows, with farm fields.
-
-**M1: Proper project**
-- Move to the Vite project layout above, with the simulation split from the
-  view.
-- Fixed tick, seeded worlds, and tests for the terrain rules.
-- Bigger world, with a minimap or edge scrolling.
-
-**M2: Settlements that grow**
-- Size tiers based on surrounding flat land (hut → house → castle).
-- Population inside buildings; full buildings send out new walkers.
-- Territory borders; sculpting only allowed inside your territory.
-
-**M3: Worship and miracles**
-- Shrines and temples, prayer, and charge meters.
-- Rally point and Prophet, with settle/gather/fight orders.
-- Earthquake and Swamp.
-
-**M4: A rival god**
-- A red tribe, combat, contested borders, simple AI, and win/lose.
-- ✅ *A complete, playable game.* **This is the big milestone.**
-
-**M5: More of everything**
-- Knight, Volcano, Flood, Armageddon. AI difficulty. Several worlds.
-  Save/load. Sound.
+**Next**
+- **Worship and territory** (section 2.4): temples generate worship that
+  charges miracles, and sculpting is limited to your territory.
+- **Conflict:** walkers fight when tribes meet; the Prophet and rally point.
+- **Win and lose** conditions, and a campaign of islands.
+- Sound and music.
 
 ## 6. Open questions
 
 1. **Territory and worship:** does this feel better than mana (section 2.4)?
+   Disasters are currently free to cast while this is decided.
 2. **Rules:** a close homage to Populous, or add our own twists?
 3. **Controls:** is left-click to raise and right-click to lower OK, or
    would you prefer the original's overhead-map feel?
