@@ -16,7 +16,7 @@ export const buildings = new Set();
 export const tileOwner = new Map();     // tile index -> building
 export const land = new Uint8Array(N * N);
 export const tribes = {};
-for (const id of Object.keys(TRIBES)) tribes[id] = { id, era: 0, score: 0, ai: true, aiT: rnd(), planT: rnd() * 2, plan: null, nextCivic: null };
+for (const id of Object.keys(TRIBES)) tribes[id] = { id, era: 0, score: 0, mode: 'settle', flag: null, leader: null, ai: true, aiT: rnd(), planT: rnd() * 2, plan: null, nextCivic: null };
 
 const HOME_TYPES = [['hut', 'hut', 'farmstead'], ['hut', 'cottage', 'manor'], ['cottage', 'townhouses', 'manor'], ['cottage', 'townhouses', 'keep']];
 const CAPACITY = { hut: 1, farmstead: 2, cottage: 2, manor: 3, townhouses: 3, keep: 4 };
@@ -158,6 +158,16 @@ export function destroyBuilding(b, cause = 'collapse') {
   recomputeLand();
 }
 
+// A building taken in battle changes hands (and colours).
+export function captureBuilding(b, tribe) {
+  b.tribe = tribe;
+  if (b.kind === 'home') b.type = homeTypeFor(tribe, b.tx, b.tz);
+  b.hp = null; b.militia = false;
+  setMesh(b, true);
+  dustBurst(b.cx, b.group.position.y, b.cz, 10 + b.size * 6);
+  recomputeLand(true);
+}
+
 // After the land changes: remove buildings whose ground is no longer flat,
 // and resize homes whose surroundings changed.
 export function validateBuildings() {
@@ -275,6 +285,7 @@ function updateEras() {
     if (era > tr.era) {
       tr.era = era;
       ctx.log(`<b style="color:${TRIBES[tr.id].css}">${TRIBES[tr.id].name}</b> tribe entered the <b>${ERAS[era].name} Age</b>`);
+      ctx.onEraChanged?.(tr.id);
       let delay = 0;
       for (const b of homesOf(tr.id)) { b.retypeAt = ctx.time + (delay += 0.4 + rnd() * 0.6); }
     }
@@ -341,8 +352,9 @@ export function updateSettlements(dt) {
   for (const tr of Object.values(tribes)) {
     // A steady trickle of new walkers leaves the tribe's homes.
     const homes = homesOf(tr.id).filter(b => b.progress >= 1);
-    tr.spawnT = (tr.spawnT ?? 0) + dt * (1 + homes.length / 40);
-    if (tr.spawnT > 30 && homes.length) { tr.spawnT = 0; ctx.homeSpawn?.(homes[Math.floor(rnd() * homes.length)]); }
+    const muster = tr.mode !== 'settle';
+    tr.spawnT = (tr.spawnT ?? 0) + dt * (1 + homes.length / 40) * (muster ? 4 : 1);
+    if (tr.spawnT > 30 && homes.length) { tr.spawnT = 0; ctx.homeSpawn?.(homes[Math.floor(rnd() * homes.length)], muster); }
     tr.planT -= dt;
     if (tr.planT <= 0) { tr.planT = 2 + rnd(); planCivic(tr); }
     if (tr.ai) { tr.aiT -= dt; if (tr.aiT <= 0) { tr.aiT = 1.4 + rnd() * 1.0; aiShape(tr); } }

@@ -22,7 +22,7 @@
   #log { position: fixed; left: 12px; top: calc(12px + env(safe-area-inset-top, 0px)); display: flex; flex-direction: column; gap: 6px; max-width: min(360px, 60vw); pointer-events: none; }
   #log .entry { padding: 6px 12px; border-radius: 10px; background: var(--glass); border: 1px solid var(--line); transition: opacity 1.5s; }
   #log .entry.old { opacity: 0.35; }
-  #toolbar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(12px + env(safe-area-inset-bottom, 0px)); display: flex; gap: 14px; padding: 8px 12px; max-width: calc(100vw - 32px); overflow-x: auto; box-sizing: border-box; }
+  #toolbar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(12px + env(safe-area-inset-bottom, 0px)); display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 14px; width: max-content; padding: 8px 12px; max-width: calc(100vw - 32px); overflow-x: auto; box-sizing: border-box; }
   #toolbar .group { display: flex; flex-direction: column; gap: 4px; }
   #toolbar .glabel { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
   #toolbar .btns { display: flex; gap: 4px; }
@@ -31,6 +31,18 @@
   #toolbar button[aria-pressed="true"] { background: var(--accent); color: #1c1a14; border-color: var(--accent); }
   #toolbar button.danger[aria-pressed="true"] { background: var(--danger); border-color: var(--danger); }
   #toolbar button:focus-visible { outline: 2px solid #7fb2ff; outline-offset: 2px; }
+  #hud .war { color: var(--ink); }
+  #hud .war.gather { color: #ffd9a0; }
+  #hud .war.attack { color: var(--danger); font-weight: 600; }
+  #overlay { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(10, 14, 22, 0.45); z-index: 5; }
+  #overlay[hidden] { display: none; }
+  #overlay .card { text-align: center; padding: 28px 36px; max-width: min(420px, calc(100vw - 64px)); }
+  #overlay h2 { margin: 0 0 6px; font-size: 34px; letter-spacing: 0.04em; }
+  #overlay.victory h2 { color: var(--accent); }
+  #overlay.defeat h2 { color: var(--danger); }
+  #overlay p { margin: 0 0 18px; color: var(--muted); }
+  #overlay button { font: 600 13px system-ui, sans-serif; color: var(--ink); background: rgba(255, 255, 255, 0.1); border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px; margin: 0 4px; cursor: pointer; }
+  #overlay button.primary { background: var(--accent); color: #1c1a14; border-color: var(--accent); }
   @media (max-width: 720px) {
     #hud { width: auto; left: 12px; top: auto; bottom: calc(96px + env(safe-area-inset-bottom, 0px)); font-size: 11px; }
     #hud .tribe .small:nth-of-type(n+4) { display: none; }
@@ -43,6 +55,7 @@
 <div id="log"></div>
 <div id="hud" class="panel"></div>
 <div id="toolbar" class="panel"></div>
+<div id="overlay" hidden><div class="card panel" style="position:static"><h2>Victory</h2><p></p><button type="button" id="keepWatching">Keep watching</button><button type="button" id="newIsland" class="primary">New island</button></div></div>
 <script type="module" src="/src/main.js"></script>
 </body>
 </html>

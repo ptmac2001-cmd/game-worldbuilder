@@ -236,12 +236,15 @@ A **detailed, stylised miniature world**, generated entirely in code:
 - Farms with crop fields and fenced livestock while agrarian; streets in towns.
 - Seasons, weather and natural disasters (earthquake, volcano, tornado, flood).
 - A rival tribe whose AI god shapes land for it.
+- Tribe conflict: battles with gear that improves each age, sieges that
+  capture buildings, militia, arrow towers, rally flag with Settle, Gather
+  and Attack commands, Leaders, a rival war AI (Peaceful, Normal or
+  Aggressive), and victory or defeat.
 
 **Next**
 - **Worship and territory** (section 2.4): temples generate worship that
   charges miracles, and sculpting is limited to your territory.
-- **Conflict:** walkers fight when tribes meet; the Prophet and rally point.
-- **Win and lose** conditions, and a campaign of islands.
+- A campaign of islands with rising difficulty.
 - Sound and music.
 
 ## 6. Open questions

@@ -7,7 +7,7 @@ import { rnd, pick } from '../rng.js';
 import { tileCenter } from '../sim/terrain.js';
 import { heightAt } from '../view/terrainView.js';
 import { C } from '../view/architecture.js';
-import { canBuildHome, placeHome, homesOf, civicsOf } from './settlements.js';
+import { canBuildHome, placeHome, homesOf, civicsOf, CAPACITY } from './settlements.js';
 
 const matCache = new Map();
 const mat = hex => { if (!matCache.has(hex)) matCache.set(hex, new THREE.MeshStandardMaterial({ color: hex, roughness: 0.8 })); return matCache.get(hex); };
@@ -28,7 +28,7 @@ const SKIN = [0xf1c9a0, 0xe0b088, 0xc68e62, 0x8a5a3b], HAIR = [0x3b2a1a, 0x6b4a2
 export const villagers = [];
 
 function mesh(geo, hex, x, y, z, cast = false) { const m = new THREE.Mesh(geo, mat(hex)); m.position.set(x, y, z); m.castShadow = cast; return m; }
-export function spawnVillager(tribe, px, pz, home = null) {
+export function spawnVillager(tribe, px, pz, home = null, strength = 1) {
   const T = TRIBES[tribe], g = new THREE.Group(), shirt = pick(T.shirts), skin = pick(SKIN), trousers = pick([0x4a3b2a, 0x3b3f4a, 0x5a4a38]);
   const legL = mesh(VG.leg, trousers, -0.026, 0.12, 0), legR = mesh(VG.leg, trousers, 0.026, 0.12, 0);
   const torso = mesh(VG.torso, shirt, 0, 0.185, 0, true), belt = mesh(VG.belt, 0x3a2a1a, 0, 0.13, 0);
@@ -37,15 +37,17 @@ export function spawnVillager(tribe, px, pz, home = null) {
   if (rnd() < 0.25) armL.add(mesh(VG.basket, 0xb08a52, 0, -0.1, 0.02));
   const head = mesh(VG.head, skin, 0, 0.3, 0, true);
   g.add(legL, legR, torso, belt, armL, armR, head);
-  const r = rnd();
-  if (r < 0.3) g.add(mesh(VG.brim, 0xd8bf7a, 0, 0.33, 0), mesh(VG.crown, 0xd8bf7a, 0, 0.355, 0));
-  else if (r < 0.45) g.add(mesh(VG.hood, shirt, 0, 0.35, -0.005));
-  else g.add(mesh(VG.hair, pick(HAIR), 0, 0.305, -0.004));
+  const r = rnd(), hat = new THREE.Group();
+  if (r < 0.3) hat.add(mesh(VG.brim, 0xd8bf7a, 0, 0.33, 0), mesh(VG.crown, 0xd8bf7a, 0, 0.355, 0));
+  else if (r < 0.45) hat.add(mesh(VG.hood, shirt, 0, 0.35, -0.005));
+  else hat.add(mesh(VG.hair, pick(HAIR), 0, 0.305, -0.004));
+  g.add(hat);
   g.scale.setScalar(0.9);
   g.position.set(px, heightAt(px, pz), pz);
-  g.userData = { tribe, home, legL, legR, armL, armR, state: 'idle', timer: rnd() * 1.5, phase: rnd() * 6, speed: (home ? 0.35 : 0.55) + rnd() * 0.25, target: null, build: null };
+  g.userData = { tribe, home, hat, strength: home ? 0.5 : strength, legL, legR, armL, armR, state: 'idle', timer: rnd() * 1.5, phase: rnd() * 6, speed: (home ? 0.35 : 0.55) + rnd() * 0.25, target: null, build: null };
   ctx.scene.add(g);
   villagers.push(g);
+  ctx.equip?.(g);
   return g;
 }
 export function spawnMany(tribe, x, z, n = 1) { for (let i = 0; i < n; i++) spawnVillager(tribe, x + (rnd() - 0.5) * 0.5, z + (rnd() - 0.5) * 0.5); }
@@ -72,6 +74,7 @@ function retarget(v) {
     }
     u.state = 'idle'; u.timer = 2; return;
   }
+  if (ctx.warRetarget?.(v)) return;
   let best = null, bd = 14;
   if (rnd() < 0.6) for (let i = 0; i < 30; i++) {
     const tx = 1 + Math.floor(rnd() * (N - 2)), tz = 1 + Math.floor(rnd() * (N - 2));
@@ -113,17 +116,19 @@ function update(v, i, dt, t) {
     if (u.timer <= 0 || v.position.y < ground - 0.2) removeVillager(v);
     return;
   }
+  if (ctx.warState?.(v, dt, t)) return;
   let swing = 0, armSwing = 0;
   if (u.state === 'idle') { u.timer -= dt; if (u.timer <= 0) retarget(v); }
   else if (u.state === 'walk') {
     const dx = u.target.x - v.position.x, dz = u.target.y - v.position.z, d = Math.hypot(dx, dz);
     if (d < 0.06) {
-      if (u.home) { u.state = 'idle'; u.timer = 1 + rnd() * 4; }
+      if (u.arrive) { const f = u.arrive; u.arrive = null; u.state = 'idle'; u.timer = 0.5; f(v); }
+      else if (u.home) { u.fleeing = false; u.state = 'idle'; u.timer = 1 + rnd() * 4; }
       else if (u.site) { u.state = 'work'; u.timer = 99; }
       else if (u.build && canBuildHome(u.build[0], u.build[1])) { u.site = placeHome(u.build[0], u.build[1], u.tribe); u.state = 'work'; u.timer = 30; u.moveIn = true; v.position.x += 0.35; }
       else { u.state = 'idle'; u.timer = 0.5 + rnd() * 2; }
     } else {
-      const sp = u.speed * dt;
+      const sp = (u.fleeing ? 0.95 : u.speed) * dt;
       v.position.x += dx / d * sp; v.position.z += dz / d * sp;
       v.rotation.y = Math.atan2(dx, dz);
       swing = Math.sin(t * 11 * u.speed + u.phase) * 0.7; armSwing = -swing * 0.8;
@@ -143,9 +148,11 @@ function update(v, i, dt, t) {
 }
 
 // A full home sends out a new walker, as long as the tribe isn't crowded.
-export function homeSpawn(b) {
+// While a tribe musters for war, homes send out stronger warriors much faster.
+export function homeSpawn(b, warrior = false) {
   const homes = homesOf(b.tribe).length;
-  if (population(b.tribe) < Math.min(45, 6 + homes * 0.6)) spawnVillager(b.tribe, b.cx + 0.35, b.cz + 0.45);
+  const cap = warrior ? Math.min(70, 8 + homes * 1.2) : Math.min(45, 6 + homes * 0.6);
+  if (population(b.tribe) < cap) spawnVillager(b.tribe, b.cx + 0.35, b.cz + 0.45, null, warrior ? 1 + CAPACITY[b.type] * 0.25 : 1);
 }
 let folkT = 0;
 export function updateVillagers(dt) {

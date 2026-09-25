@@ -15,11 +15,12 @@ import { initWater } from './view/water.js';
 import { initSky, updateSky } from './view/sky.js';
 import { initParticles, updateParticles, dustBurst } from './view/particles.js';
 import { initVegetation, refreshVegetation, clearRocks } from './view/vegetation.js';
-import { tileOwner, land, validateBuildings, updateBuildingHeights, updateSettlements, foundTribes, recomputeLand } from './game/settlements.js';
-import { spawnMany, callWorkers, updateVillagers, homeSpawn } from './game/villagers.js';
+import { tribes, tileOwner, land, validateBuildings, updateBuildingHeights, updateSettlements, foundTribes, recomputeLand } from './game/settlements.js';
+import { villagers, spawnMany, callWorkers, updateVillagers, homeSpawn } from './game/villagers.js';
 import { syncAnimals, updateAnimals } from './game/animals.js';
 import { earthquake, volcano, tornado, flood, updateDisasters } from './game/disasters.js';
 import { initUI, updateHUD, ui } from './ui/hud.js';
+import { equip, refreshGear, warRetarget, warState, updateConflict, placeFlag } from './game/conflict.js';
 
 const params = new URLSearchParams(location.search);
 const canvas = document.getElementById('c');
@@ -76,6 +77,9 @@ ctx.refreshVegetation = () => refreshVegetation(blocked);
 ctx.spawnVillager = (tribe, x, z, n = 1) => spawnMany(tribe, x, z, n);
 ctx.callWorkers = callWorkers;
 ctx.homeSpawn = homeSpawn;
+Object.assign(ctx, { equip, warRetarget, warState, onEraChanged: refreshGear, rival: params.get('rival') ?? 'normal' });
+// Testing aid: ?bluewar=1 lets the AI run blue's wars too.
+if (params.get('bluewar')) tribes.blue.autoWar = true;
 ctx.onLandChanged = () => { syncAnimals(); ctx.refreshVegetation(); };
 ctx.onTerrainEdited = (verts, opts = {}) => {
   if (opts.clearRocks) for (const [x, z] of verts) for (const [dx, dz] of [[0, 0], [-1, 0], [0, -1], [-1, -1]]) if (T.inGrid(x + dx, z + dz)) clearRocks(x + dx, z + dz);
@@ -104,18 +108,21 @@ const warp = +(params.get('warp') ?? 0);
 const warpStart = performance.now();
 for (let t = 0, snap = 0; t < warp; t += 0.1, snap += 0.1) {
   ctx.time += 0.1;
-  updateSettlements(0.1); updateVillagers(0.1); updateAnimals(0.1); updateDisasters(0.1); updateSky(0.1);
+  updateSettlements(0.1); updateVillagers(0.1); updateConflict(0.1); updateAnimals(0.1); updateDisasters(0.1); updateSky(0.1);
   if (animating && snap > 1) { snap = 0; while (stepHeights(1)); animating = false; updateBuildingHeights(); }
 }
 if (warp) { console.warn('warp ms', Math.round(performance.now() - warpStart)); while (stepHeights(1)); animating = false; updateBuildingHeights(); recomputeLand(); for (const b of [...tileOwner.values()]) if (b.progress < 1) b.progress = 0.999; }
 // Testing aid: ?focus=type[,tribe][,distance] points the camera at a building.
 if (params.get('focus')) {
   const [type, tribe, dist = 3.5] = params.get('focus').split(',');
-  const b = [...new Set(tileOwner.values())].find(b => b.type === type && (!tribe || b.tribe === tribe));
+  const fighters = villagers.filter(v => !v.userData.home && (!tribe || v.userData.tribe === tribe));
+  const soldier = type === 'army' && (fighters.find(v => v.userData.state === 'fight') || fighters.find(v => v.userData.leader) || fighters[0]);
+  const b = soldier ? { cx: soldier.position.x, cz: soldier.position.z } : [...new Set(tileOwner.values())].find(b => b.type === type && (!tribe || b.tribe === tribe));
   if (b) {
     const y = heightAt(b.cx, b.cz), d = +dist;
-    controls.target.set(b.cx, y + 0.4, b.cz);
-    camera.position.set(b.cx + d * 0.55, y + d * 0.62, b.cz + d * 0.85);
+    controls.target.set(b.cx, y + (soldier ? 0.15 : 0.4), b.cz);
+    if (soldier) camera.position.set(b.cx + d * 0.3, y + d * 1.1, b.cz + d * 0.55);
+    else camera.position.set(b.cx + d * 0.55, y + d * 0.62, b.cz + d * 0.85);
   }
 }
 
@@ -155,7 +162,8 @@ canvas.addEventListener('pointerup', e => {
     if (!T.edit(gx, gz, tool === 'raise' ? 1 : -1)) return;
     ctx.onTerrainEdited([v], { clearRocks: true });
     dustBurst(wx, heightAt(wx, wz), wz);
-  } else if (tool === 'quake') earthquake(gx, gz);
+  } else if (tool === 'flag') { if (placeFlag('blue', wx, wz)) ctx.log('Your rally flag is planted'); }
+  else if (tool === 'quake') earthquake(gx, gz);
   else if (tool === 'volcano') volcano(gx, gz);
   else if (tool === 'tornado') tornado(gx, gz);
 });
@@ -180,6 +188,7 @@ function frame() {
     ctx.time += dt;
     updateSettlements(dt);
     updateVillagers(dt);
+    updateConflict(dt);
     updateAnimals(dt);
     updateDisasters(dt);
   }
@@ -197,7 +206,7 @@ function frame() {
     const v = pickVertex(lastMove);
     ring.visible = !!v;
     if (v) {
-      const x = v[0] - N / 2, z = v[1] - N / 2, big = ui.tool !== 'raise' && ui.tool !== 'lower';
+      const x = v[0] - N / 2, z = v[1] - N / 2, big = ui.tool !== 'raise' && ui.tool !== 'lower' && ui.tool !== 'flag';
       ring.position.set(x, Math.max(heightAt(x, z), SEA) + 0.03, z);
       ring.geometry = big ? areaGeo : ringGeo;
       ring.scale.setScalar(big ? 4.5 : 1);

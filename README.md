@@ -43,6 +43,19 @@ npm test         # rules tests (terrain slope rule, flat-land checks)
 - **Disasters** (keys 3–6): Earthquake, Volcano and Tornado strike where you
   click, and Flood sinks the whole world by one step. With *Nature strikes* on,
   they also happen on their own every few minutes.
+- **Your tribe:** plant a rally flag (key 7), then choose **Settle** (8),
+  **Gather** (9) or **Attack** (0). Gathering musters warriors at the flag,
+  and the first to arrive becomes your **Leader**, who is stronger and
+  inspires nearby troops. While your tribe is at war, homes send out warriors
+  but no new homes get built.
+- **Battles:** walkers of rival tribes fight when they meet. Stronger walkers
+  are more likely to win, and gear improves with each age: clubs, spears,
+  sword and shield, then helmets and armour. Warriors besiege and **capture**
+  enemy buildings, and residents come out as militia to defend them. Keeps,
+  manors, town centres and cathedrals shoot arrows at invaders.
+- **The rival god** musters armies and attacks in waves. *Rival* sets how
+  aggressive it is: Peaceful, Normal or Aggressive. You win when the other
+  tribe has no buildings and no walkers left, and lose if yours doesn't.
 - **Speed:** Pause (Space), 1×, 4× or 12×. *Blue god helps* lets an AI shape land
   for your tribe. *Graphics* switches between High and Fast.
 
@@ -50,7 +63,8 @@ npm test         # rules tests (terrain slope rule, flat-land checks)
 
 `?seed=42` new island · `?speed=4` · `?nature=off` · `?quality=fast` ·
 `?warp=600` fast-forward 600 game seconds ·
-`?focus=cathedral,red,6` point the camera at a building ·
+`?focus=cathedral,red,6` point the camera at a building (or `army,red,2` at a soldier) ·
+`?rival=aggressive` · `?bluewar=1` let the AI run blue's wars too ·
 `?cam=x,y,z,tx,ty,tz` set the camera
 
 ## Code map
@@ -63,6 +77,7 @@ src/view/architecture.js every building, assembled from primitives
 src/view/vegetation.js   trees, grass, flowers, rocks with seasonal shaders
 src/view/water.js, sky.js, particles.js
 src/game/settlements.js  homes, ages, landmarks, farmland, AI gods
+src/game/conflict.js     battles, sieges, arrows, flags, leaders, the rival's war AI, victory
 src/game/villagers.js, animals.js, disasters.js
 src/ui/hud.js            toolbar, status panel, event log
 ```
