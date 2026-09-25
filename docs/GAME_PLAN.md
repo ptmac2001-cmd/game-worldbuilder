@@ -43,8 +43,8 @@ loop more interesting, leave it for later.
   up in water drown.
 - Terrain types can be added on top later (grass, rock, swamp, lava, snow).
   Rock can't be built on, swamp kills walkers, and so on.
-- The grid is what the **simulation** uses. What you **see** is a smooth,
-  detailed 3D landscape built from it (see section 4).
+- The grid is what the **simulation** uses. What you **see** is a low-poly 3D
+  landscape built directly from it (see section 4).
 
 ### 2.2 Followers (walkers)
 
@@ -143,207 +143,149 @@ Miracles are cast inside your territory or near your Prophet.
 
 ## 3. Technical approach
 
-### 3.1 Engine: Godot 4 (changed from the browser)
+### 3.1 Stack: plain JavaScript + Three.js in the browser
 
-Because the graphics should be **extremely good**, a browser game with 2D
-canvas is no longer the right tool. The options:
+This is a hobby project, not a commercial one, so we use the simplest stack
+that still looks great:
 
-| Engine      | How good it can look | Fit for this game | Notes |
-|-------------|----------------------|-------------------|-------|
-| **Godot 4** (recommended) | Very high for a stylised look: real-time global illumination, volumetric fog, custom shaders | Great | Free and open source. Easy to build terrain that changes during play. Project files are plain text, so Claude can work on everything directly. |
-| Unity 6     | Very high | Great | Mature, huge asset store. Licensing and pricing have changed a lot in recent years. |
-| Unreal 5    | Highest (photorealistic) | Awkward | Its terrain system isn't designed to change during play. Much logic lives in Blueprints, a visual format that can't be edited as text, so it's harder to work on together. Heavy tooling. |
+- **JavaScript** (ES modules), no engine, nothing to install to play.
+- **Three.js** for 3D rendering: lighting, soft shadows, fog, water, and
+  thousands of animated objects. It's more than enough for a charming
+  low-poly world.
+- **Vite** as the dev server once the game outgrows one file. Save a file and
+  the browser reloads instantly.
+- **Vitest** for a handful of tests on the game rules (the slope rule, for
+  example).
 
-**Recommendation: Godot 4**, with game code in **GDScript** (simple, with fast
-iteration). Performance-critical parts can move to C# later if needed.
-Target **desktop** (Windows, Mac, Linux), which can later be shipped on Steam.
-The browser version is dropped because it would cap the visual quality.
+Is JavaScript too limiting? **No, not for this game.** Populous is a
+simulation of a small grid and a few hundred people, and a browser handles
+that easily. The only limit is photorealistic, AAA-style graphics, which we
+aren't aiming for.
+
+A working proof is in [`prototype/index.html`](../prototype/index.html). Open
+it in a browser to sculpt an island and watch villagers settle the flat land.
+It's about 1,000 lines of plain JavaScript with no art files.
 
 ### 3.2 Architecture
 
-Keep the **simulation** separate from the **presentation**, even in an engine.
+Keep the **simulation** separate from the **drawing code**. That keeps the
+rules easy to test and change.
 
 ```
-game/
-  sim/                 # pure game logic, plain classes, no rendering
-    world.gd           # heightmap grid, sea level, terrain types
-    terrain.gd         # raise/lower with slope rule, flatness queries
-    territory.gd       # who controls each tile
-    walkers.gd         # wandering, settling, combat, merging
-    settlements.gd     # size tiers, growth, spawning walkers
-    worship.gd         # temples, prayer, miracle charge meters
-    miracles.gd        # earthquake, swamp, knight, volcano, flood, armageddon
-    ai.gd              # rival deity
-    rng.gd             # seeded random number generator
-    game_state.gd      # owns the state, advances one fixed tick at a time
-  view/                # everything you see; reads sim state, never changes it
-    terrain_mesh.gd    # builds and animates the 3D landscape
-    water.gd
-    vegetation.gd
-    villagers_view.gd  # draws many villagers at once, efficiently
-    buildings_view.gd
-    miracle_fx/        # particles, camera shake, and so on
-    camera_rig.gd
-  ui/                  # HUD, miracle bar, menus
-  shaders/
-  assets/
-  tests/               # simulation tests that run without graphics
+index.html
+src/
+  sim/                # pure game logic: no Three.js, no DOM
+    world.js          # heightmap grid, sea level, terrain types
+    terrain.js        # raise/lower with slope rule, flatness queries
+    territory.js      # who controls each tile
+    walkers.js        # wandering, settling, combat
+    settlements.js    # size tiers, growth, spawning walkers
+    worship.js        # temples, prayer, miracle charge meters
+    miracles.js
+    ai.js             # rival deity
+    rng.js            # seeded random numbers
+    game.js           # owns the state, advances one fixed tick at a time
+  view/               # Three.js: reads sim state, never changes it
+    terrainMesh.js
+    water.js
+    props.js          # trees, rocks, buildings
+    villagers.js
+    effects.js        # miracle particles, camera shake
+    camera.js
+  ui/                 # HTML overlay: miracle buttons, population bars
+  main.js
 ```
 
-Key principles:
-- **Fixed-timestep simulation** (for example 10 ticks per second). The visuals
-  animate smoothly between ticks. The game plays the same on every machine.
-- **Seeded RNG and deterministic logic.** This makes replays, save/load, and
-  bug reproduction easy, and multiplayer possible later.
-- **Commands, not direct changes.** Player clicks and AI decisions both
-  produce commands like `RaiseTerrain(x, y)` or `CastMiracle(type, x, y)`. The
-  player and the AI then go through exactly the same code.
-- **Game logic that can be tested without graphics.** Tests run headless, so
-  rule changes can be checked without opening the game.
+Principles (all cheap to follow from the start):
+- **Fixed-tick simulation** (for example 10 ticks per second). The visuals
+  animate smoothly in between.
+- **Seeded random numbers**, so the same seed always gives the same world.
+  That helps with bugs and with sharing worlds.
+- **Player and AI use the same commands** (`raise(x, z)`,
+  `castMiracle(type, x, z)`).
 
-## 4. Visual direction: making it look extremely good
+## 4. Visual style
 
-For a small team, great graphics come from **strong art direction, lighting,
-and polish**, not from photorealism. A stylised game looks good for years. A
-game that aims for realism and falls short looks dated quickly.
+A **detailed, stylised miniature world**, like a hand-made diorama. It is
+richer than simple low-poly, but everything is still **generated in code**, so
+no 3D models or art purchases are needed.
 
-**The target look: a living miniature world.** It should feel like a
-beautifully lit diorama sitting on your desk, full of little people. It should
-look good both zoomed out over the whole island and zoomed in on one village.
+What the prototype already does:
+- **Terrain:** a smooth, high-resolution mesh (4×4 render vertices per
+  simulation tile), with added noise detail. A shader paints it procedurally:
+  varied grass, dry patches, exposed earth on slopes, rock and scree above a
+  ragged tree line, snow on the peaks, beaches, and wet sand at the waterline.
+- **Farm fields:** tiles next to cottages and manors become fields, with
+  furrows and wheat or crop colours.
+- **Water:** a custom shader with colour based on depth (turquoise shallows,
+  deep blue sea), animated waves, sun glints, reflections of the sky, and
+  shoreline foam that ripples.
+- **Sky and light:** a gradient sky with a sun glow, drifting clouds whose
+  shadows move across the land, soft sun shadows, and distance fog.
+- **Vegetation:** thousands of instanced oaks, pines, bushes, rocks, flowers
+  and grass tufts, with grass and trees swaying in the wind.
+- **Buildings:** three tiers, each assembled from dozens of parts:
+  - *Hut:* a round mud-and-thatch hut with a woodpile and a banner.
+  - *Cottage:* timber framing, windows with shutters, a door, a tiled roof, a
+    chimney, and a barrel and bench.
+  - *Manor:* a stone ground floor, a timber-framed upper floor, a round tower
+    with a flag, and a hedge.
 
-Reference games: *Tiny Glade*, *Townscaper*, *Godus*, *Populous: The
-Beginning*, *Before We Leave*, *Settlers* (for bustling life).
+  Roof and flag colours show which tribe owns them, and chimneys smoke.
+- **Villagers:** little people with legs, arms, belts, hats or hair, and
+  tools. They walk with a proper stride, hammer while building, and sink when
+  they drown.
+- **Feedback:** land rises and falls smoothly with dust clouds, buildings pop
+  up with a bounce, and a ring marks the corner you're about to raise or
+  lower.
+- **Post-processing:** ambient occlusion for contact shadows, a subtle bloom,
+  and filmic tone mapping.
 
-### 4.1 Terrain (the star of the show)
-- A 3D landscape built from the simulation grid, drawn as **soft terraced
-  layers**. Each height step is a visible ledge with rock and soil showing on
-  the cliff face. It looks gorgeous and keeps flat land easy to read.
-- **Sculpting feels physical:** land rises and sinks with a smooth animation,
-  throwing up dust, pebbles tumbling, and grass slowly growing back over
-  fresh earth.
-- Materials blend automatically by height and slope: sand near water, grass on
-  flat ground, rock on cliffs, snow on peaks.
-- Grass and flowers sway in the wind, with thousands of blades drawn
-  efficiently at once. Trees and rocks are scattered naturally.
-
-### 4.2 Water
-- A custom water shader: colour that deepens with depth, foam along
-  shorelines, gentle waves, reflections, and light patterns (caustics) in the
-  shallows.
-- Flooding is a spectacle: the whole sea visibly rises and swallows the
-  lowlands.
-
-### 4.3 Light and atmosphere
-- A moving sun with a **day/night cycle**. Warm sunsets, and villages lighting
-  up at night.
-- Soft shadows, real-time global illumination (light bouncing off the ground),
-  volumetric fog, and god rays through clouds. Cloud shadows drift across the
-  land.
-- Post-processing: **tilt-shift depth of field** (the miniature look), bloom,
-  ambient occlusion, and colour grading per world theme.
-
-### 4.4 Life
-- Hundreds or thousands of animated villagers, drawn efficiently as one batch.
-  They walk, build, farm, pray, fight, and panic when disaster strikes.
-- Buildings are **visibly built stage by stage**, and upgrade in front of you
-  as you flatten more land. Chimney smoke, market stalls, livestock.
-- Territory borders glow softly on the ground in each tribe's colour. Worship
-  shows as streams of light rising from temples.
-
-### 4.5 Miracles as spectacle
-- Earthquake: the ground cracks open, the camera shakes, dust rises, buildings
-  crumble.
-- Volcano: the mountain erupts from the earth, lava flows glow, ash falls, and
-  rocks rain down.
-- Swamp: the ground darkens, bubbles and mist appear.
-- Sound design matters as much as visuals here.
-
-### 4.6 Camera
-- Smooth orbit, rotate, and zoom, from a view of the whole world down to
-  street level.
-
-### 4.7 Performance target
-- 60 frames per second at 1080p on a mid-range gaming PC.
-- Worlds of about 128×128 tiles, with up to about 2,000 villagers.
-- Lower graphics presets for weaker machines.
-
-### 4.8 Art assets (an honest note)
-The code side can be written from scratch: shaders, terrain, water, lighting,
-particles, animation systems, and a lot of **procedural** content (terrain,
-vegetation placement, buildings assembled from modular pieces). **3D models and
-character animations, though, need to come from somewhere:**
-
-1. **Prototype:** free CC0 packs (Quaternius, KayKit, Kenney). They look
-   decent, cost nothing, and have a consistent style.
-2. **Final look:** a paid stylised pack (for example Synty, roughly $20–$150),
-   or a commissioned 3D artist for a truly unique look.
-3. Whatever we choose, we keep **one consistent style**. Mixing styles is the
-   quickest way to make a game look cheap.
+Next visual steps:
+- A day/night cycle, with windows lighting up at night.
+- Territory borders glowing on the ground in each tribe's colour.
+- Miracle effects: earthquake cracks, lava, swamp mist, and camera shake.
+- More building variety (temples, walls, a castle tier) and seasonal world
+  themes.
 
 ## 5. Roadmap
 
-Each milestone ends with something you can play or see. The graphics bar is
-proven **early** (M2), not left until the end.
+Each milestone ends with something you can play.
 
-**M0: Project skeleton**
-- Godot 4 project, folder layout, fixed-tick simulation loop, headless test
-  runner.
+**M0: Prototype** ✅ *done:* see `prototype/index.html`
+- Heightmap with the slope rule, a detailed textured terrain, a water shader,
+  sky, clouds, and click-to-sculpt with animation.
+- Two tribes of villagers that wander, build on flat land, and drown in water.
+- Settlements that upgrade from hut to cottage to manor as the flat land around
+  them grows, with farm fields.
 
-**M1: Sculpt the world**
-- Heightmap generation from a seed. Terraced 3D terrain mesh built from it.
-- Raise and lower land with the slope rule, with smooth animation.
-- Camera: orbit, zoom, pan.
-- ✅ *Playable:* a terrain sandbox.
+**M1: Proper project**
+- Move to the Vite project layout above, with the simulation split from the
+  view.
+- Fixed tick, seeded worlds, and tests for the terrain rules.
+- Bigger world, with a minimap or edge scrolling.
 
-**M2: Look development (the "screenshot" milestone)**
-- Terrain materials, water shader, sun and sky, day/night, fog, shadows,
-  tilt-shift and colour grading. Grass, trees, rocks.
-- ✅ *Goal:* a screenshot that looks like a finished game. If it doesn't, we
-  iterate here before building more.
+**M2: Settlements that grow**
+- Size tiers based on surrounding flat land (hut → house → castle).
+- Population inside buildings; full buildings send out new walkers.
+- Territory borders; sculpting only allowed inside your territory.
 
-**M3: Life appears**
-- Villagers wander and look for flat land. Settlements with size tiers, built
-  stage by stage.
-- Population growth, and full settlements sending out new villagers.
-- Territory that grows from settlements and limits where you can sculpt.
-- ✅ *Playable:* shape land and watch a civilisation spread.
-
-**M4: Worship and miracles**
-- Shrines and temples, prayer, and per-miracle charge meters.
+**M3: Worship and miracles**
+- Shrines and temples, prayer, and charge meters.
 - Rally point and Prophet, with settle/gather/fight orders.
-- First miracles: Earthquake and Swamp, with full visual effects.
+- Earthquake and Swamp.
 
-**M5: A rival god**
-- A second tribe with its own colour. Contested borders.
-- Villager combat, and attacking or capturing settlements. AI deity.
-- Win/lose screens.
-- ✅ *Playable:* a complete one-level game. **This is the big milestone.**
+**M4: A rival god**
+- A red tribe, combat, contested borders, simple AI, and win/lose.
+- ✅ *A complete, playable game.* **This is the big milestone.**
 
-**M6: The full pantheon and campaign**
-- Knight, Volcano, Flood, Armageddon.
-- AI difficulty levels. World themes. Campaign progression, save/load.
-
-**M7: Final art and polish**
-- Final art assets, animation, audio and music, tutorial, balancing,
-  settings, and graphics presets.
-
-**Stretch ideas**
-- Online multiplayer (made possible by the deterministic simulation).
-- A world editor, and sharing worlds by seed.
-- More gods, more miracles, heroes.
+**M5: More of everything**
+- Knight, Volcano, Flood, Armageddon. AI difficulty. Several worlds.
+  Save/load. Sound.
 
 ## 6. Open questions
 
-1. **Worship and territory:** does this replacement for mana feel right? (See
-   section 2.4. The other options considered were renaming mana to "faith" and
-   making it visible, or a Prophet who casts everything personally, as in
-   *Populous: The Beginning*.)
-2. **Engine:** is Godot 4 on desktop OK? It means no browser version.
-3. **Look:** a stylised miniature world (recommended), or are you after
-   realism?
-4. **Art budget:** free asset packs only, a paid pack, or a hired artist for
-   the final look?
-5. **Your machine:** what computer will you mostly play and develop on? This
-   sets how far we push the graphics.
-6. **Rules:** a close homage to Populous, or add our own twists (seasons,
-   resources, tech eras)?
+1. **Territory and worship:** does this feel better than mana (section 2.4)?
+2. **Rules:** a close homage to Populous, or add our own twists?
+3. **Controls:** is left-click to raise and right-click to lower OK, or
+   would you prefer the original's overhead-map feel?
