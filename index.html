@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Worldbuilder</title>
+<style>
+  :root { --glass: rgba(18, 26, 38, 0.74); --line: rgba(255, 255, 255, 0.14); --ink: #eef3f8; --muted: #a9b6c4; --accent: #f2c46a; --danger: #ff8a5a; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #d6e9f2; font: 13px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); }
+  canvas { display: block; touch-action: none; }
+  .panel { position: fixed; padding: 10px 14px; border-radius: 12px; background: var(--glass); border: 1px solid var(--line); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+  #hud { right: 12px; top: calc(12px + env(safe-area-inset-top, 0px)); width: 260px; pointer-events: none; }
+  #hud .season { display: flex; justify-content: space-between; align-items: baseline; font-weight: 700; font-size: 15px; letter-spacing: 0.02em; }
+  #hud .year { font-weight: 500; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  #hud .bar { height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.12); overflow: hidden; margin: 4px 0 6px; }
+  #hud .bar i { display: block; height: 100%; background: var(--accent); border-radius: 2px; }
+  #hud .tribe { border-top: 1px solid var(--line); padding-top: 8px; margin-top: 8px; }
+  #hud .thead { display: flex; justify-content: space-between; align-items: baseline; }
+  #hud .era { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); }
+  #hud .small { font-size: 12px; color: var(--muted); }
+  #hud .need { font-size: 12px; color: #ffd9a0; }
+  #log { position: fixed; left: 12px; top: calc(12px + env(safe-area-inset-top, 0px)); display: flex; flex-direction: column; gap: 6px; max-width: min(360px, 60vw); pointer-events: none; }
+  #log .entry { padding: 6px 12px; border-radius: 10px; background: var(--glass); border: 1px solid var(--line); transition: opacity 1.5s; }
+  #log .entry.old { opacity: 0.35; }
+  #toolbar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(12px + env(safe-area-inset-bottom, 0px)); display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 14px; width: max-content; padding: 8px 12px; max-width: calc(100vw - 32px); overflow-x: auto; box-sizing: border-box; }
+  #toolbar .group { display: flex; flex-direction: column; gap: 4px; }
+  #toolbar .glabel { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
+  #toolbar .btns { display: flex; gap: 4px; }
+  #toolbar button { font: 600 12px system-ui, sans-serif; color: var(--ink); background: rgba(255, 255, 255, 0.07); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; cursor: pointer; white-space: nowrap; }
+  #toolbar button:hover { background: rgba(255, 255, 255, 0.16); }
+  #toolbar button[aria-pressed="true"] { background: var(--accent); color: #1c1a14; border-color: var(--accent); }
+  #toolbar button.danger[aria-pressed="true"] { background: var(--danger); border-color: var(--danger); }
+  #toolbar button:focus-visible { outline: 2px solid #7fb2ff; outline-offset: 2px; }
+  #hud .war { color: var(--ink); }
+  #hud .war.gather { color: #ffd9a0; }
+  #hud .war.attack { color: var(--danger); font-weight: 600; }
+  #overlay { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(10, 14, 22, 0.45); z-index: 5; }
+  #overlay[hidden] { display: none; }
+  #overlay .card { text-align: center; padding: 28px 36px; max-width: min(420px, calc(100vw - 64px)); }
+  #overlay h2 { margin: 0 0 6px; font-size: 34px; letter-spacing: 0.04em; }
+  #overlay.victory h2 { color: var(--accent); }
+  #overlay.defeat h2 { color: var(--danger); }
+  #overlay p { margin: 0 0 18px; color: var(--muted); }
+  #overlay button { font: 600 13px system-ui, sans-serif; color: var(--ink); background: rgba(255, 255, 255, 0.1); border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px; margin: 0 4px; cursor: pointer; }
+  #overlay button.primary { background: var(--accent); color: #1c1a14; border-color: var(--accent); }
+  #hud .badge { margin-left: 6px; padding: 0 6px; border-radius: 6px; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; vertical-align: 1px; }
+  #hud .badge.you { background: #7fb2ff; color: #0e1a2c; }
+  #hud .badge.rival { border: 1px solid rgba(255, 138, 122, 0.6); color: #ff8a7a; }
+  #youMarker { position: fixed; left: 0; top: 0; pointer-events: none; z-index: 3; display: flex; flex-direction: column; align-items: center; transition: opacity 0.3s; }
+  #youMarker span { padding: 4px 10px; border-radius: 8px; background: #7fb2ff; color: #0e1a2c; font-weight: 700; font-size: 13px; white-space: nowrap; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3); }
+  #youMarker i { width: 0; height: 0; border: 7px solid transparent; border-top-color: #7fb2ff; }
+  #saves { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(10, 14, 22, 0.45); z-index: 6; }
+  #saves[hidden] { display: none; }
+  #saves .card { position: static; width: min(480px, calc(100vw - 48px)); padding: 18px 20px; }
+  #saves h2 { margin: 0 0 4px; font-size: 20px; }
+  #saves .slot { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+  #saves .info { display: flex; flex-direction: column; min-width: 0; }
+  #saves .small { font-size: 12px; color: var(--muted); }
+  #saves .btns { display: flex; gap: 6px; flex-shrink: 0; }
+  #saves .foot { display: flex; justify-content: space-between; margin-top: 12px; gap: 8px; }
+  #saves button { font: 600 12px system-ui, sans-serif; color: var(--ink); background: rgba(255, 255, 255, 0.08); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; cursor: pointer; }
+  #saves button.primary { background: var(--accent); color: #1c1a14; border-color: var(--accent); }
+  #saves button:focus-visible, #overlay button:focus-visible { outline: 2px solid #7fb2ff; outline-offset: 2px; }
+  @media (max-width: 520px) { #saves .slot { flex-direction: column; align-items: flex-start; } }
+  @media (max-width: 720px) {
+    #hud { width: auto; left: 12px; top: auto; bottom: calc(96px + env(safe-area-inset-bottom, 0px)); font-size: 11px; }
+    #hud .tribe .small:nth-of-type(n+4) { display: none; }
+    #log { max-width: calc(100vw - 32px); }
+  }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="log"></div>
+<div id="hud" class="panel"></div>
+<div id="toolbar" class="panel"></div>
+<div id="youMarker" hidden><span>You · Blue tribe</span><i></i></div>
+<div id="saves" hidden><div class="card panel" role="dialog" aria-labelledby="savesTitle"><h2 id="savesTitle">Saved games</h2><div class="small">Saves are kept in this browser. The game also autosaves every two minutes.</div><div id="savesList"></div><div class="foot"><button type="button" id="savesNew">New island</button><button type="button" id="closeSaves" class="primary">Close</button></div></div></div>
+<div id="overlay" hidden><div class="card panel" style="position:static"><h2>Victory</h2><p></p><button type="button" id="keepWatching">Keep watching</button><button type="button" id="newIsland" class="primary">New island</button></div></div>
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>
