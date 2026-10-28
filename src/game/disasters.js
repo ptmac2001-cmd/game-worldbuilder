@@ -36,11 +36,13 @@ export function earthquake(gx, gz) {
   markTiles(gx, gz, 4.5, (ti, d) => { lava.cracks[ti] = Math.max(lava.cracks[ti], 1 - d / 6); });
   commitLava();
   active.push({ kind: 'quake', gx, gz, t: 0, next: 0 });
+  ctx.sound?.('quake', ...toWorld(gx, gz), { vol: 1.6 });
 }
 
 export function volcano(gx, gz) {
   ctx.log('<b>Volcano!</b> A mountain of fire rises');
   active.push({ kind: 'volcano', gx, gz, t: 0, next: 0, raised: 0, base: T.heightAtVertex(gx, gz) });
+  ctx.sound?.('volcano', ...toWorld(gx, gz), { vol: 1.8 });
 }
 
 const funnelMat = new THREE.MeshStandardMaterial({ color: 0x8a9298, transparent: true, opacity: 0.45, depthWrite: false, side: THREE.DoubleSide, roughness: 1 });
@@ -58,17 +60,20 @@ export function tornado(gx, gz) {
   g.position.set(x, heightAt(x, z), z);
   ctx.scene.add(g);
   active.push({ kind: 'tornado', g, rings, deb, t: 0, life: 14, dir: rnd() * Math.PI * 2 });
+  ctx.sound?.('whoosh', x, z, { vol: 1.5 });
 }
 
 export function flood() {
   ctx.log('<b>Flood!</b> The seas rise and the land sinks');
   setStorm(1);
   active.push({ kind: 'flood', t: 0, done: false });
+  ctx.sound?.('thunder');
 }
 
 const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _p = new THREE.Vector3(), _s = new THREE.Vector3(1, 1, 1);
 let lavaT = 0;
 export function updateDisasters(dt) {
+  ctx.tornadoes = active.filter(d => d.kind === 'tornado').map(d => ({ x: d.g.position.x, z: d.g.position.z }));
   for (const d of [...active]) {
     d.t += dt;
     if (d.kind === 'quake') {

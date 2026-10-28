@@ -1,6 +1,7 @@
 // Seeded random numbers and value noise, so the same seed gives the same world.
 let seed = 1989;
 export function setSeed(s) { seed = s | 0; }
+export const getSeed = () => seed;
 export function rnd() {
   seed = seed + 0x6D2B79F5 | 0;
   let t = Math.imul(seed ^ seed >>> 15, 1 | seed);

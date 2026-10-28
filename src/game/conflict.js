@@ -81,18 +81,20 @@ function setArmed(v, armed) {
 }
 export function refreshGear(tribe) { for (const v of villagers) if (v.userData.tribe === tribe && alive(v)) equip(v); }
 
-function makeLeader(v) {
+export function makeLeader(v, restoring = false) {
   const u = v.userData, tr = tribes[u.tribe];
   tr.leader = v;
   u.leader = true;
-  u.strength += 2;
+  if (!restoring) u.strength += 2;
   const cape = new THREE.Mesh(G.cape, mat(TRIBES[u.tribe].flag)); cape.position.set(0, 0.25, -0.04); cape.rotation.x = 0.15;
   const staff = new THREE.Group(); staff.add(new THREE.Mesh(G.staff, mat(WOOD)), new THREE.Mesh(G.ankh, mat(0xd9b44a)));
   u.armL.add(staff); u.staff = staff;
   const ring = new THREE.Mesh(G.ring, new THREE.MeshBasicMaterial({ color: TRIBES[u.tribe].flag, transparent: true, opacity: 0.7, depthWrite: false }));
   ring.position.y = 0.015;
   v.add(cape, ring);
+  if (restoring) return;
   say(u.tribe, 'tribe has a new <b>Leader</b>');
+  ctx.sound?.('leader', v.position.x, v.position.z);
 }
 
 // ---------------------------------------------------------------------------
@@ -133,6 +135,7 @@ export function setMode(tribe, mode) {
   const tr = tribes[tribe];
   if (tr.mode === mode) return;
   tr.mode = mode;
+  if (mode !== 'settle') { const f = tr.flag; ctx.sound?.('horn', tribe === 'blue' ? null : f?.x, tribe === 'blue' ? null : f?.z, { tribe, vol: tribe === 'blue' ? 0.8 : 1.4 }); }
   if (mode !== 'settle' && !tr.flag) { const c = centroid(tribe); if (c) placeFlag(tribe, c[0], c[1] + 1.5); }
   for (const v of villagers) {
     const u = v.userData;
@@ -204,6 +207,7 @@ function kill(v, cause = 'battle') {
   const u = v.userData;
   if (u.state === 'dead') return;
   u.state = 'dead'; u.timer = 3; u.foe = null;
+  ctx.sound?.('death', v.position.x, v.position.z);
   if (u.leader) { tribes[u.tribe].leader = null; say(u.tribe, 'tribe\'s Leader has fallen'); }
   dustBurst(v.position.x, v.position.y, v.position.z, 4);
   if (cause === 'arrow') emit(FX.debris, v.position.x, v.position.y + 0.2, v.position.z, 0, 0.8, 0, 0.6, 0.4, 0xd8352a);
@@ -221,6 +225,7 @@ export function capture(b, v) {
   say(tribe, `warriors captured a ${TRIBES[old].name} ${b.kind === 'civic' ? b.type.replace('towncentre', 'Town Centre') : b.type}`);
   for (const f of [...villagers]) if (f.userData.home === b) removeVillager(f);
   captureBuilding(b, tribe);
+  ctx.sound?.('capture', b.cx, b.cz, { tribe, vol: 1.5 });
   removeVillager(v); // the victor moves in
   for (const o of villagers) if (o.userData.siege === b) { o.userData.siege = null; o.userData.state = 'idle'; }
 }
@@ -250,6 +255,8 @@ export function warState(v, dt, t) {
     v.position.y = heightAt(v.position.x, v.position.z);
     if (Math.random() < dt * 5) emit(FX.fire, (v.position.x + f.position.x) / 2, v.position.y + 0.22, (v.position.z + f.position.z) / 2, (Math.random() - 0.5) * 0.6, 0.4, (Math.random() - 0.5) * 0.6, 0.25, 0.4, 0xfff0b0);
     u.fightT -= dt;
+    ctx.lastBattleAt = ctx.time;
+    if (Math.random() < dt * 2.5) ctx.sound?.('clash', v.position.x, v.position.z);
     if (u.fightT <= 0) resolve(v, f);
     return true;
   }
@@ -301,6 +308,7 @@ const arrowMat = new THREE.MeshStandardMaterial({ vertexColors: true });
 const TOWERS = { keep: 3.6, manor: 2.8, towncentre: 3.8, cathedral: 3.8 };
 function shoot(b, target) {
   const top = b.group.position.y + b.design.height * 0.8;
+  ctx.sound?.('arrow', b.cx, b.cz);
   const m = new THREE.Mesh(arrowGeo, arrowMat);
   ctx.scene.add(m);
   const to = new THREE.Vector3(target.position.x, target.position.y + 0.15, target.position.z);
@@ -408,7 +416,7 @@ export function updateConflict(dt) {
     checkT = 1;
     for (const tribe of Object.keys(TRIBES)) {
       const left = [...buildings].some(b => b.tribe === tribe) || villagers.some(v => v.userData.tribe === tribe && alive(v));
-      if (!left) { ctx.gameOver = tribe === 'blue' ? 'defeat' : 'victory'; ctx.onGameOver?.(ctx.gameOver); break; }
+      if (!left) { ctx.gameOver = tribe === 'blue' ? 'defeat' : 'victory'; ctx.sound?.(ctx.gameOver); ctx.onGameOver?.(ctx.gameOver); break; }
     }
   }
 }

@@ -95,7 +95,7 @@ export function updateAnimals(dt) {
       a.rotation.x = u.state === 'graze' ? (u.sp === 'chicken' ? Math.max(0, Math.sin(t * 12 + u.phase)) * 0.6 : 0.12) : 0;
       if (u.t <= 0) {
         if (rnd() < 0.5) { u.state = 'walk'; u.tx = u.cx + (rnd() - 0.5) * 0.76; u.tz = u.cz + (rnd() - 0.5) * 0.76; }
-        else { u.state = rnd() < 0.7 ? 'graze' : 'idle'; u.t = 1.5 + rnd() * 3; }
+        else { u.state = rnd() < 0.7 ? 'graze' : 'idle'; u.t = 1.5 + rnd() * 3; if (rnd() < 0.12) ctx.sound?.({ sheep: 'baa', cow: 'moo', pig: 'oink', chicken: 'cluck' }[u.sp], a.position.x, a.position.z); }
       }
     } else {
       const dx = u.tx - a.position.x, dz = u.tz - a.position.z, d = Math.hypot(dx, dz);

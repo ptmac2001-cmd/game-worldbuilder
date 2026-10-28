@@ -240,12 +240,13 @@ A **detailed, stylised miniature world**, generated entirely in code:
   capture buildings, militia, arrow towers, rally flag with Settle, Gather
   and Attack commands, Leaders, a rival war AI (Peaceful, Normal or
   Aggressive), and victory or defeat.
+- Synthesised sound and music, save and load with autosave, and clearer
+  player identity (You badge, village marker, welcome message).
 
 **Next**
 - **Worship and territory** (section 2.4): temples generate worship that
   charges miracles, and sculpting is limited to your territory.
 - A campaign of islands with rising difficulty.
-- Sound and music.
 
 ## 6. Open questions
 

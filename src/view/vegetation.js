@@ -158,11 +158,11 @@ export function initVegetation(scene) {
   boulders = layer(scene, merge([part(bg, 0x4a4442, 0, 0.06, 0)]), seasonal(new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.95 }), 'rock'), [], true, 400);
 }
 
-export function addBoulder(x, z) {
+export function addBoulder(x, z, s = null, r = null) {
   const tx = Math.floor(x + N / 2), tz = Math.floor(z + N / 2);
   if (tx < 0 || tz < 0 || tx >= N || tz >= N || boulders.items.length >= 400) return;
   const g = 0.7 + rnd() * 0.4;
-  const it = { x, z, tx, tz, s: 0.55 + rnd() * 0.75, r: rnd() * 6, yOff: 0, maxY: 99, minY: -0.1, rock: true };
+  const it = { x, z, tx, tz, s: s ?? 0.55 + rnd() * 0.75, r: r ?? rnd() * 6, yOff: 0, maxY: 99, minY: -0.1, rock: true };
   boulders.mesh.setColorAt(boulders.items.length, tint(g, g * 0.95, g * 0.9));
   boulders.mesh.instanceColor.needsUpdate = true;
   boulders.items.push(it);
@@ -173,6 +173,11 @@ export function clearRocks(tx, tz) {
   rocky[tz * N + tx] = 0;
   for (const it of boulders.items) if (it.tx === tx && it.tz === tz) it.dead = true;
 }
+
+// Saving: which plants were destroyed, and where the boulders are.
+export const deadPlants = () => layers.map(L => L.items.reduce((a, it, i) => (it.dead && !it.rock ? a.push(i) : 0, a), []));
+export function setDeadPlants(lists) { lists.forEach((ids, li) => { const L = layers[li]; if (L) for (const i of ids) if (L.items[i]) L.items[i].dead = true; }); }
+export const boulderList = () => boulders.items.filter(it => !it.dead).map(it => [+it.x.toFixed(2), +it.z.toFixed(2), +it.s.toFixed(2), +it.r.toFixed(2)]);
 
 // Kill plants within a radius (tornado, lava).
 export function destroyPlants(x, z, radius) {

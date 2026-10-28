@@ -43,6 +43,25 @@
   #overlay p { margin: 0 0 18px; color: var(--muted); }
   #overlay button { font: 600 13px system-ui, sans-serif; color: var(--ink); background: rgba(255, 255, 255, 0.1); border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px; margin: 0 4px; cursor: pointer; }
   #overlay button.primary { background: var(--accent); color: #1c1a14; border-color: var(--accent); }
+  #hud .badge { margin-left: 6px; padding: 0 6px; border-radius: 6px; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; vertical-align: 1px; }
+  #hud .badge.you { background: #7fb2ff; color: #0e1a2c; }
+  #hud .badge.rival { border: 1px solid rgba(255, 138, 122, 0.6); color: #ff8a7a; }
+  #youMarker { position: fixed; left: 0; top: 0; pointer-events: none; z-index: 3; display: flex; flex-direction: column; align-items: center; transition: opacity 0.3s; }
+  #youMarker span { padding: 4px 10px; border-radius: 8px; background: #7fb2ff; color: #0e1a2c; font-weight: 700; font-size: 13px; white-space: nowrap; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3); }
+  #youMarker i { width: 0; height: 0; border: 7px solid transparent; border-top-color: #7fb2ff; }
+  #saves { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(10, 14, 22, 0.45); z-index: 6; }
+  #saves[hidden] { display: none; }
+  #saves .card { position: static; width: min(480px, calc(100vw - 48px)); padding: 18px 20px; }
+  #saves h2 { margin: 0 0 4px; font-size: 20px; }
+  #saves .slot { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+  #saves .info { display: flex; flex-direction: column; min-width: 0; }
+  #saves .small { font-size: 12px; color: var(--muted); }
+  #saves .btns { display: flex; gap: 6px; flex-shrink: 0; }
+  #saves .foot { display: flex; justify-content: space-between; margin-top: 12px; gap: 8px; }
+  #saves button { font: 600 12px system-ui, sans-serif; color: var(--ink); background: rgba(255, 255, 255, 0.08); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; cursor: pointer; }
+  #saves button.primary { background: var(--accent); color: #1c1a14; border-color: var(--accent); }
+  #saves button:focus-visible, #overlay button:focus-visible { outline: 2px solid #7fb2ff; outline-offset: 2px; }
+  @media (max-width: 520px) { #saves .slot { flex-direction: column; align-items: flex-start; } }
   @media (max-width: 720px) {
     #hud { width: auto; left: 12px; top: auto; bottom: calc(96px + env(safe-area-inset-bottom, 0px)); font-size: 11px; }
     #hud .tribe .small:nth-of-type(n+4) { display: none; }
@@ -55,6 +74,8 @@
 <div id="log"></div>
 <div id="hud" class="panel"></div>
 <div id="toolbar" class="panel"></div>
+<div id="youMarker" hidden><span>You · Blue tribe</span><i></i></div>
+<div id="saves" hidden><div class="card panel" role="dialog" aria-labelledby="savesTitle"><h2 id="savesTitle">Saved games</h2><div class="small">Saves are kept in this browser. The game also autosaves every two minutes.</div><div id="savesList"></div><div class="foot"><button type="button" id="savesNew">New island</button><button type="button" id="closeSaves" class="primary">Close</button></div></div></div>
 <div id="overlay" hidden><div class="card panel" style="position:static"><h2>Victory</h2><p></p><button type="button" id="keepWatching">Keep watching</button><button type="button" id="newIsland" class="primary">New island</button></div></div>
 <script type="module" src="/src/main.js"></script>
 </body>

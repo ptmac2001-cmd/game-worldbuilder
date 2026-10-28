@@ -126,14 +126,20 @@ function setMesh(b, instant) {
   ctx.scene.add(b.group);
 }
 
-function makeBuilding(kind, type, tribe, x0, z0, size, instant) {
+function makeBuilding(kind, type, tribe, x0, z0, size, instant, quiet = false) {
   const b = { id: nextId++, kind, type, tribe, tx: x0, tz: z0, size, tiles: [], variant: Math.floor(hash2(x0 * 3 + 1, z0 * 5 + 2) * 4) + (type === 'townhouses' ? 4 * Math.floor(hash2(x0, z0) * 5) : 0) };
   b.cx = x0 - N / 2 + size / 2; b.cz = z0 - N / 2 + size / 2;
   for (let z = z0; z < z0 + size; z++) for (let x = x0; x < x0 + size; x++) { const ti = z * N + x; b.tiles.push(ti); tileOwner.set(ti, b); clearRocks(x, z); }
   b.buildTime = kind === 'civic' ? 10 + size * 6 : 3.5;
   setMesh(b, instant);
   buildings.add(b);
-  recomputeLand();
+  if (!quiet) recomputeLand();
+  return b;
+}
+// Loading a saved game: rebuild a building exactly as it was.
+export function restoreBuilding(e) {
+  const b = makeBuilding(e.kind, e.type, e.tribe, e.tx, e.tz, e.size, e.progress >= 1, true);
+  if (e.progress < 1) b.progress = e.progress;
   return b;
 }
 export function placeHome(tx, tz, tribe, instant = false) { return makeBuilding('home', homeTypeFor(tribe, tx, tz), tribe, tx, tz, 1, instant); }
@@ -149,6 +155,7 @@ export function destroyBuilding(b, cause = 'collapse') {
   buildings.delete(b);
   for (const ti of b.tiles) if (tileOwner.get(ti) === b) tileOwner.delete(ti);
   ctx.scene.remove(b.group);
+  ctx.sound?.('collapse', b.cx, b.cz, { vol: 0.6 + b.size * 0.3 });
   const y = b.group.position.y, s = b.size;
   dustBurst(b.cx, y, b.cz, 12 + s * 10);
   debrisBurst(b.cx, y, b.cz, 10 + s * 12, 0.8 + s * 0.2);
@@ -286,6 +293,7 @@ function updateEras() {
       tr.era = era;
       ctx.log(`<b style="color:${TRIBES[tr.id].css}">${TRIBES[tr.id].name}</b> tribe entered the <b>${ERAS[era].name} Age</b>`);
       ctx.onEraChanged?.(tr.id);
+      ctx.sound?.('era', null, null, { tribe: tr.id });
       let delay = 0;
       for (const b of homesOf(tr.id)) { b.retypeAt = ctx.time + (delay += 0.4 + rnd() * 0.6); }
     }
@@ -374,12 +382,14 @@ export function updateSettlements(dt) {
       b.progress = Math.min(1, b.progress + dt / b.buildTime);
       const hgt = b.design.height + 0.05;
       b.clip.constant = b.group.position.y - 0.3 + (hgt + 0.3) * b.progress;
+      if (Math.random() < dt * 3) ctx.sound?.('hammer', b.cx, b.cz);
       if (Math.random() < dt * 1.2) emit(FX.dust, b.cx + (rnd() - 0.5) * b.size * 0.8, b.group.position.y + 0.05, b.cz + (rnd() - 0.5) * b.size * 0.8, 0, 0.2, 0, 0.8, 0.7, 0xb59f7c);
       if (b.progress >= 1) {
         b.mesh.material.dispose();
         b.mesh.material = buildMat;
         b.group.remove(b.scaffold); b.scaffold = null;
         b.sails.forEach(s => { s.visible = true; });
+        ctx.sound?.(b.kind === 'civic' ? 'landmark' : 'complete', b.cx, b.cz);
         if (b.kind === 'civic') ctx.log(`<b style="color:${TRIBES[b.tribe].css}">${TRIBES[b.tribe].name}</b> tribe completed a <b>${CIVICS[b.type].label}</b>`);
       }
       continue;

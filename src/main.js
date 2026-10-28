@@ -9,6 +9,8 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { N, SEA } from './config.js';
 import { ctx, U } from './ctx.js';
 import { setSeed } from './rng.js';
+import { initAudio, updateAudio, sound, play, outputLevel, soundNames, audioState } from './audio/sound.js';
+import { takePending, readSlot, applySave, saveTo, storageOK } from './game/save.js';
 import * as T from './sim/terrain.js';
 import { initTerrain, computeTarget, stepHeights, heightAt, terrain } from './view/terrainView.js';
 import { initWater } from './view/water.js';
@@ -19,7 +21,7 @@ import { tribes, tileOwner, land, validateBuildings, updateBuildingHeights, upda
 import { villagers, spawnMany, callWorkers, updateVillagers, homeSpawn } from './game/villagers.js';
 import { syncAnimals, updateAnimals } from './game/animals.js';
 import { earthquake, volcano, tornado, flood, updateDisasters } from './game/disasters.js';
-import { initUI, updateHUD, ui } from './ui/hud.js';
+import { initUI, updateHUD, updateMarker, ui } from './ui/hud.js';
 import { equip, refreshGear, warRetarget, warState, updateConflict, placeFlag } from './game/conflict.js';
 
 const params = new URLSearchParams(location.search);
@@ -63,7 +65,10 @@ addEventListener('resize', () => {
 // ---------------------------------------------------------------------------
 // Build the world
 // ---------------------------------------------------------------------------
-setSeed(+(params.get('seed') ?? 1989));
+const pending = takePending();
+const saved = pending?.load ? readSlot(pending.load) : null;
+ctx.seed = saved?.seed ?? pending?.seed ?? +(params.get('seed') ?? 1989);
+setSeed(ctx.seed);
 T.generate();
 initTerrain(scene);
 initWater(scene);
@@ -100,8 +105,20 @@ ctx.applyQuality = () => {
 };
 initUI({ onFlood: () => flood() });
 ctx.applyQuality();
-foundTribes();
-recomputeLand();
+ctx.sound = sound;
+initAudio();
+if (params.get('debug')) window.__game = { ctx, play, outputLevel, soundNames, audioState };
+if (saved) {
+  applySave(saved);
+  updateSky(30);
+  ui.markerUntil = 8;
+  ui.sync?.();
+  ctx.log(`Game loaded: ${saved.summary}`);
+} else {
+  foundTribes();
+  recomputeLand();
+  ctx.log('You lead the <b style="color:#7fb2ff">Blue tribe</b>, in the west of the island. Flatten land near your huts so your people can build. Press H to find your village.');
+}
 
 // Testing aid: ?warp=SECONDS fast-forwards the simulation before the first frame.
 const warp = +(params.get('warp') ?? 0);
@@ -160,9 +177,10 @@ canvas.addEventListener('pointerup', e => {
   if (e.button === 2 || e.shiftKey) tool = tool === 'raise' ? 'lower' : tool === 'lower' ? 'raise' : tool;
   if (tool === 'raise' || tool === 'lower') {
     if (!T.edit(gx, gz, tool === 'raise' ? 1 : -1)) return;
+    sound(tool, wx, wz);
     ctx.onTerrainEdited([v], { clearRocks: true });
     dustBurst(wx, heightAt(wx, wz), wz);
-  } else if (tool === 'flag') { if (placeFlag('blue', wx, wz)) ctx.log('Your rally flag is planted'); }
+  } else if (tool === 'flag') { if (placeFlag('blue', wx, wz)) { ctx.log('Your rally flag is planted'); sound('flag', wx, wz); } }
   else if (tool === 'quake') earthquake(gx, gz);
   else if (tool === 'volcano') volcano(gx, gz);
   else if (tool === 'tornado') tornado(gx, gz);
@@ -172,7 +190,7 @@ canvas.addEventListener('pointerup', e => {
 // Main loop
 // ---------------------------------------------------------------------------
 const clock = new THREE.Clock();
-let hudT = 0;
+let hudT = 0, autosaveT = 120;
 const shakeOffset = new THREE.Vector3();
 function frame() {
   requestAnimationFrame(frame);
@@ -215,6 +233,10 @@ function frame() {
   }
   hudT -= realDt;
   if (hudT <= 0) { hudT = 0.3; updateHUD(); }
+  updateMarker();
+  updateAudio(realDt);
+  autosaveT -= realDt;
+  if (autosaveT <= 0 && storageOK && ctx.speed > 0) { autosaveT = 120; saveTo('auto'); }
 
   camera.position.sub(shakeOffset);
   controls.update();

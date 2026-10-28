@@ -105,7 +105,7 @@ export function callWorkers(b, n) {
 function update(v, i, dt, t) {
   const u = v.userData;
   const ground = heightAt(v.position.x, v.position.z);
-  if (u.state !== 'drown' && u.state !== 'fly' && ground < SEA - 0.08) { u.state = 'drown'; u.timer = 1.2; }
+  if (u.state !== 'drown' && u.state !== 'fly' && ground < SEA - 0.08) { u.state = 'drown'; u.timer = 1.2; ctx.sound?.('splash', v.position.x, v.position.z); }
   if (u.state === 'drown') {
     u.timer -= dt; v.position.y -= dt * 0.35; v.rotation.z += dt * 1.5;
     if (u.timer <= 0) removeVillager(v);

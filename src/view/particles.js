@@ -1,6 +1,7 @@
 // Instanced particle pools: smoke, dust, debris, fire, water spray, ash.
 import * as THREE from 'three';
 import { smooth } from '../rng.js';
+import { ctx } from '../ctx.js';
 
 const _m = new THREE.Matrix4(), _p = new THREE.Vector3(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), _c = new THREE.Color();
 const pools = [];
@@ -53,7 +54,7 @@ export function updateParticles(dt, groundAt) {
       if (P.ground) {
         const g = groundAt(p.x, p.z);
         if (p.y < g) {
-          if (P.trail) { p.life = 0; emit(FX.ash, p.x, g + 0.05, p.z, 0, 0.3, 0, 1.5, 1.5, 0x3a3634); emit(FX.fire, p.x, g + 0.05, p.z, 0, 0.3, 0, 0.6, 1.4, 0xff7a20); return; }
+          if (P.trail) { p.life = 0; ctx.sound?.('bomb', p.x, p.z); emit(FX.ash, p.x, g + 0.05, p.z, 0, 0.3, 0, 1.5, 1.5, 0x3a3634); emit(FX.fire, p.x, g + 0.05, p.z, 0, 0.3, 0, 0.6, 1.4, 0xff7a20); return; }
           p.y = g; p.vy *= -0.3; p.vx *= 0.6; p.vz *= 0.6;
         }
       }

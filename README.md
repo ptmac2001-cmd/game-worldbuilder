@@ -18,6 +18,9 @@ npm test         # rules tests (terrain slope rule, flat-land checks)
 
 ## How to play
 
+You are the **Blue tribe**, starting in the west of the island (marked *You* in
+the status panel). Press **H** or *My village* to jump the camera home.
+
 - **Raise / Lower** (keys 1, 2): click a corner of the land. Right-click or
   Shift-click does the opposite. Drag to orbit, right-drag to pan, scroll to zoom.
 - Flat land lets homes grow: **hut → cottage → manor**, or **townhouses and
@@ -56,6 +59,12 @@ npm test         # rules tests (terrain slope rule, flat-land checks)
 - **The rival god** musters armies and attacks in waves. *Rival* sets how
   aggressive it is: Peaceful, Normal or Aggressive. You win when the other
   tribe has no buildings and no walkers left, and lose if yours doesn't.
+- **Sound** (key M) and **Music** toggles are in Options. Everything you hear
+  is synthesised live: sea, wind, rain, birds, bells, hammering, battles,
+  disasters, animals, and gentle music with war drums in battle. Sound
+  starts after your first click.
+- **Save / Load:** three save slots plus an autosave every two minutes, kept
+  in your browser's local storage. The same dialog starts a new island.
 - **Speed:** Pause (Space), 1×, 4× or 12×. *Blue god helps* lets an AI shape land
   for your tribe. *Graphics* switches between High and Fast.
 
@@ -79,7 +88,9 @@ src/view/water.js, sky.js, particles.js
 src/game/settlements.js  homes, ages, landmarks, farmland, AI gods
 src/game/conflict.js     battles, sieges, arrows, flags, leaders, the rival's war AI, victory
 src/game/villagers.js, animals.js, disasters.js
-src/ui/hud.js            toolbar, status panel, event log
+src/game/save.js         save slots, autosave, loading
+src/audio/sound.js       synthesised sound effects, ambience and music
+src/ui/hud.js            toolbar, status panel, event log, save dialog
 ```
 
 The design and roadmap are in [`docs/GAME_PLAN.md`](docs/GAME_PLAN.md).
